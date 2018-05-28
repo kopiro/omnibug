@@ -1081,7 +1081,7 @@ window.Omnibug = (() => {
                 return `"` + row.join(colDelim) + `"`;
             }).join("\n");
         // Add any headers
-        exportText = `"` + ["Omnibug v0.6.0", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
+        exportText = `"` + ["Omnibug (Beta) v0.9.0", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
                    + `"` + ["Event Type", "Provider", "Account", "Request ID", "URL", "Timestamp"].join(colDelim) + `"\n` + exportText;
 
 

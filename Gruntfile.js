@@ -3,9 +3,9 @@ module.exports = function(grunt) {
 
     grunt.config.init({
         "extension": {
-            "name": "Omnibug",
-            "version": "0.6.0",
-            "storageKey": "omnibug"
+            "name": "Omnibug (Beta)",
+            "version": "0.9.0",
+            "storageKey": "omnibug-beta"
         },
         "chrome": {
             "usePolyfill": true,

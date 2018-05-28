@@ -9,7 +9,7 @@
      * Create the panel
      */
     browser.devtools.panels.create(
-        "Omnibug",
+        "Omnibug (Beta)",
         "./assets/images/blue-32.png",
         "./devtools/panel.html"
     ).then((panel) => {
@@ -18,7 +18,7 @@
             port;
 
         port = browser.runtime.connect({
-            name: "omnibug-" + browser.devtools.inspectedWindow.tabId
+            name: "omnibug-beta-" + browser.devtools.inspectedWindow.tabId
         });
 
         /**
