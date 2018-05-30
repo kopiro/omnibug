@@ -16,7 +16,7 @@ window.Omnibug = (() => {
         settings = (new OmnibugSettings).defaults,
         requestPanel = d.getElementById("requests"),
         noRequests = d.getElementById("no-requests"),
-        filters = {"providers": {}, "account": ""},
+        filters = {"providers": {}, "account": "", "accountType": "contains"},
         persist = true,
         recordedData = [],
         allProviders = OmnibugProvider.getProviders();
@@ -62,11 +62,18 @@ window.Omnibug = (() => {
     });
 
     // Add our listener for the account filter
-    let filterAccount = d.getElementById("filter-account");
+    let filterAccount = d.getElementById("filter-account"),
+        filterAccountType = d.getElementById("filter-account-type");
     filterAccount.addEventListener("input", (event) => {
         // event.preventDefault();
         let accountFilter = event.target.value;
         filters.account = accountFilter.replace(/[^0-9a-zA-Z_ .,-]/g, "");
+        updateFiltersStyles();
+    });
+    filterAccountType.addEventListener("change", (event) => {
+        // event.preventDefault();
+        let accountFilterType = event.target.value;
+        filters.accountType = ["contains", "starts", "ends", "exact"].indexOf(accountFilterType) === -1 ? "contains" : accountFilterType;
         updateFiltersStyles();
     });
     filterAccount.addEventListener("keypress", (event) => {
@@ -128,8 +135,8 @@ window.Omnibug = (() => {
            exportData = exportData.filter((request) => {
                if(request.event === "webNavigation") { return true; }
                let account = getMappedColumnValue("account", request);
-               return filters.providers[request.provider.key] === true &&
-                      account.indexOf(filters.account) !== -1;
+               return filters.providers[request.provider.key] === true
+                   && ((!filters.account && !account) || (account && account.indexOf(filters.account) !== -1));
            });
         }
 
@@ -173,12 +180,16 @@ window.Omnibug = (() => {
                     ];
                 }
                 row.push(request.request.url.replace(/"/g, `\\"`));
+                row.push(request.request.postData);
                 row.push((new Date(request.request.timestamp)).toString());
+                if(settings.showNotes) {
+                    row.push(request.request.note);
+                }
                 return `"` + row.join(colDelim) + `"`;
             }).join("\n");
         // Add any headers
         exportText = `"` + ["##OMNIBUG_NAME## v##OMNIBUG_VERSION##", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
-                   + `"` + ["Event Type", "Provider", "Account", "Request ID", "URL", "Timestamp"].join(colDelim) + `"\n` + exportText;
+                   + `"` + ["Event Type", "Provider", "Account", "Request ID", "Request URL", "POST Data", "Timestamp", "Notes"].join(colDelim) + `"\n` + exportText;
 
 
         // Generate the file to download
@@ -211,6 +222,24 @@ window.Omnibug = (() => {
 
     // Load up the default settings
     loadSettings(settings);
+
+    /**
+     * Listener for note changes
+     * @param event
+     */
+    function noteListener(event) {
+        let input = event.target,
+            requestParent = input.closest("details.request"),
+            id = requestParent.getAttribute("data-request-id"),
+            timestamp = requestParent.getAttribute("data-timestamp"),
+            index = recordedData.findIndex((request) => {
+                return request.event === "webRequest" && String(request.request.id) === id && String(request.request.timestamp) === timestamp;
+            });
+        if(index !== -1) {
+            // this _should_ always be true...
+            recordedData[index].request.note = input.value;
+        }
+    }
 
     /**
      * Shortcut to creating an HTML element
@@ -294,6 +323,7 @@ window.Omnibug = (() => {
         let details = createElement("details", ["request"], {
                         "data-request-id": request.request.id,
                         "data-provider": request.provider.key,
+                        "data-timestamp": request.request.timestamp,
                         "data-account": ""
                       }),
             summary = createElement("summary"),
@@ -365,6 +395,13 @@ window.Omnibug = (() => {
         redirectWarning.innerText = "This request was redirected, thus the data may not be the final data sent to the provider.";
         body.appendChild(redirectWarning);
 
+        // Add the note field & listener
+        let noteWrapper = createElement("div", ["form-group", "request-note"]),
+            noteInput = createElement("input", ["form-input"], {"type": "text", "placeholder": "Enter a note about this request…"});
+        noteInput.addEventListener("input", noteListener);
+        noteWrapper.appendChild(noteInput);
+        body.appendChild(noteWrapper);
+
         let requestSummary = [];
         Object.entries(request.request).forEach((info) => {
             requestSummary.push({
@@ -416,14 +453,13 @@ window.Omnibug = (() => {
         data.sort((a, b) => {
             let aKey = a.field.toLowerCase(),
                 bKey = b.field.toLowerCase();
-            if(aKey < bKey) { return -1; }
-            if(aKey > bKey) { return 1; }
-            return 0;
+            return aKey.localeCompare(bKey, "standard", {"numeric": true});
         }).forEach((row) => {
             let tableRow = createElement("tr", [], {"data-parameter-key": row.key}),
-                name = createElement("td"),
-                nameKey = createElement("span", ["parameter-key"], {"title": row.field}),
-                nameField = createElement("span", ["parameter-field"], {"title": row.key}),
+                title = `${row.field} (${row.key})`,
+                name = createElement("td", [], {"title": title}),
+                nameKey = createElement("span", ["parameter-key"]),
+                nameField = createElement("span", ["parameter-field"]),
                 value = createElement("td", ["parameter-value"]);
 
             nameKey.innerText = row.key;
@@ -482,10 +518,23 @@ window.Omnibug = (() => {
         clearStyles(styleSheet);
 
         // Highlight colors
-        let highlightPrefix = "[data-parameter-key=\"",
-            highlightKeys = highlightPrefix + settings.highlightKeys.join(`"], ${highlightPrefix}`) + "\"]",
-            rule = `${highlightKeys} { background-color: ${settings.color_highlight}; }`;
-        styleSheet.sheet.insertRule(rule);
+        if(settings.highlightKeys.length) {
+            let highlightPrefix = "[data-parameter-key=\"",
+                highlightKeys = highlightPrefix + settings.highlightKeys.join(`"], ${highlightPrefix}`) + "\"]",
+                rule = `${highlightKeys} { background-color: ${settings.color_highlight} !important; }`;
+            styleSheet.sheet.insertRule(rule);
+        }
+
+        // Wrap text or truncate with ellipsis
+        if(!settings.wrapText) {
+            styleSheet.sheet.insertRule(`.parameter-value {white-space: nowrap; overflow: hidden;  text-overflow: ellipsis;}`, styleSheet.sheet.cssRules.length);
+            styleSheet.sheet.insertRule(`.parameter-value:hover {white-space: normal; overflow: visible;  height:auto;}`, styleSheet.sheet.cssRules.length);
+        }
+
+        // Hide note field if disabled
+        if(!settings.showNotes) {
+            styleSheet.sheet.insertRule(`.request-note {display: none;}`, styleSheet.sheet.cssRules.length);
+        }
 
         // Background colors
         styleSheet.sheet.insertRule(`[data-request-type] { background-color: ${settings.color_click}; }`, styleSheet.sheet.cssRules.length);
@@ -593,7 +642,8 @@ window.Omnibug = (() => {
 
         // Add account filter, if applicable
         if(filters.account) {
-            styleSheet.sheet.insertRule(`.request:not([data-account*="${filters.account}" i]) { display: none; }`);
+            let filterMap = {"contains": "*", "starts": "^", "ends": "$", "exact": ""};
+            styleSheet.sheet.insertRule(`.request:not([data-account${filterMap[filters.accountType]}="${filters.account}" i]) { display: none; }`);
         }
 
         // Show the user that filters are (in)active
