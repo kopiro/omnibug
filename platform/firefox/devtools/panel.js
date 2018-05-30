@@ -188,7 +188,7 @@ window.Omnibug = (() => {
                 return `"` + row.join(colDelim) + `"`;
             }).join("\n");
         // Add any headers
-        exportText = `"` + ["Omnibug v0.6.0", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
+        exportText = `"` + ["Omnibug (Beta) v0.9.2", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
                    + `"` + ["Event Type", "Provider", "Account", "Request ID", "Request URL", "POST Data", "Timestamp", "Notes"].join(colDelim) + `"\n` + exportText;
 
 
@@ -233,10 +233,8 @@ window.Omnibug = (() => {
             id = requestParent.getAttribute("data-request-id"),
             timestamp = requestParent.getAttribute("data-timestamp"),
             index = recordedData.findIndex((request) => {
-                console.log("recordedData", request);
                 return request.event === "webRequest" && String(request.request.id) === id && String(request.request.timestamp) === timestamp;
             });
-        console.log("noteListener", id, timestamp, index, input.value);
         if(index !== -1) {
             // this _should_ always be true...
             recordedData[index].request.note = input.value;
@@ -397,8 +395,9 @@ window.Omnibug = (() => {
         redirectWarning.innerText = "This request was redirected, thus the data may not be the final data sent to the provider.";
         body.appendChild(redirectWarning);
 
+        // Add the note field & listener
         let noteWrapper = createElement("div", ["form-group", "request-note"]),
-            noteInput = createElement("input", ["form-input"], {"type": "text", "placeholder": "Enter a note about this request&hellip;"});
+            noteInput = createElement("input", ["form-input"], {"type": "text", "placeholder": "Enter a note about this request…"});
         noteInput.addEventListener("input", noteListener);
         noteWrapper.appendChild(noteInput);
         body.appendChild(noteWrapper);
