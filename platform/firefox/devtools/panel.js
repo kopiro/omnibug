@@ -188,7 +188,7 @@ window.Omnibug = (() => {
                 return `"` + row.join(colDelim) + `"`;
             }).join("\n");
         // Add any headers
-        exportText = `"` + ["Omnibug (Beta) v0.9.2", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
+        exportText = `"` + ["Omnibug (Beta) v0.9.3", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
                    + `"` + ["Event Type", "Provider", "Account", "Request ID", "Request URL", "POST Data", "Timestamp", "Notes"].join(colDelim) + `"\n` + exportText;
 
 
@@ -232,12 +232,12 @@ window.Omnibug = (() => {
             requestParent = input.closest("details.request"),
             id = requestParent.getAttribute("data-request-id"),
             timestamp = requestParent.getAttribute("data-timestamp"),
-            index = recordedData.findIndex((request) => {
-                return request.event === "webRequest" && String(request.request.id) === id && String(request.request.timestamp) === timestamp;
+            request = recordedData.find((r) => {
+                return r.event === "webRequest" && String(r.request.id) === id && String(r.request.timestamp) === timestamp;
             });
-        if(index !== -1) {
-            // this _should_ always be true...
-            recordedData[index].request.note = input.value;
+        if(typeof request !== "undefined") {
+            // this _should_ always trigger, but just in case...
+            request.request.note = input.value;
         }
     }
 
@@ -348,22 +348,26 @@ window.Omnibug = (() => {
             colTime = createElement("div", ["column", "col-6", "col-lg-4", "col-md-4", "col-sm-2"]),
             providerTitle = request.provider.name;
 
+        let requestTypeEl = createElement("span", ["label"]),
+            requestTypeValue;
+
         // Add the provider name & request type (if applicable)
         if(request.provider.columns.requestType) {
-            let requestTypeEl = createElement("span", ["label"]),
-                requestTypeValue = request.data.find((el) => {
-                    return el.key === request.provider.columns.requestType;
-                });
-
-            // Verify the column / data exists, if so add it as a label
-            if(requestTypeValue) {
-                requestTypeEl.setAttribute("data-request-type", requestTypeValue.value);
-                requestTypeEl.innerText = requestTypeValue.value;
-                colTitleWrapper.appendChild(requestTypeEl);
-                providerTitle += " - " + requestTypeValue.value;
-            }
+            requestTypeValue = request.data.find((el) => {
+                return el.key === request.provider.columns.requestType;
+            });
         }
+        if(!requestTypeValue) {
+            requestTypeValue = {"value": "Other"};
+        }
+
+        // Verify the column / data exists, if so add it as a label
+        requestTypeEl.setAttribute("data-request-type", requestTypeValue.value);
+        requestTypeEl.innerText = requestTypeValue.value;
+        colTitleWrapper.appendChild(requestTypeEl);
+        providerTitle += " - " + requestTypeValue.value;
         colTitleSpan.innerText = request.provider.name;
+
         colTitleWrapper.setAttribute("title", providerTitle);
         colTitleRedirect.appendChild(colTitleRedirectIcon);
         colTitleWrapper.appendChild(colTitleSpan);
@@ -381,7 +385,7 @@ window.Omnibug = (() => {
         summaryColumns.appendChild(colAccount);
 
         // Add the timestamp
-        let timestamp = new Date(request.request.timestamp);
+        let timestamp = new Date(request.request.timestamp).toLocaleString();
         colTime.innerText = timestamp;
         colTime.setAttribute("title", timestamp);
         summaryColumns.appendChild(colTime);
@@ -418,11 +422,17 @@ window.Omnibug = (() => {
                 groups[val].push(item);
             }
             return groups;
-        }, {"Summary": requestSummary});
+        }, {"summary": requestSummary});
 
-        Object.entries(data).forEach((dataGroup) => {
-            let panel = buildRequestPanel(dataGroup[0], dataGroup[1], !settings.showFullNames);
-            body.appendChild(panel);
+        let groups = request.provider.groups || [];
+        groups.unshift({"key": "summary", "name": "Summary"});
+        groups.push({"key": "other", "name": "Other"});
+
+        groups.forEach((group) => {
+            if (data[group.key]) {
+                let panel = buildRequestPanel(group.name, data[group.key], !settings.showFullNames);
+                body.appendChild(panel);
+            }
         });
         details.appendChild(body);
 
@@ -438,7 +448,10 @@ window.Omnibug = (() => {
      * @return {HTMLElement}
      */
     function buildRequestPanel(title, data = [], useKey = false) {
-        let wrapper = createElement("details", ["request-details"], {"open": "open"});
+        let wrapper = createElement("details", ["request-details"]);
+        if(title !== "Summary") {
+            wrapper.setAttribute("open", "open");
+        }
 
         // Add the summary (title)
         let summary = createElement("summary");
