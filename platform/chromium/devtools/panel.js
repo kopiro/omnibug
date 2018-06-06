@@ -922,8 +922,18 @@ window.Omnibug = (() => {
         noRequests = d.getElementById("no-requests"),
         filters = {"providers": {}, "account": "", "accountType": "contains"},
         persist = true,
+        storageLoadedSettings = false,
         recordedData = [],
         allProviders = OmnibugProvider.getProviders();
+
+    // Setup GA tracker
+    window.GoogleAnalyticsObject = "tracker";
+    window.tracker = function(){ (window.tracker.q = window.tracker.q||[]).push(arguments), window.tracker.l=1*new Date(); };
+
+    tracker("create", "UA-114343677-3", "auto");
+    tracker("set", "checkProtocolTask", ()=>{});
+    tracker("set", "dimension1", "0.9.6");
+
 
     // Clear all requests
     d.querySelectorAll("a[href=\"#clear\"]").forEach((element) => {
@@ -949,6 +959,7 @@ window.Omnibug = (() => {
             let target = d.getElementById(element.getAttribute("data-target-modal"));
             if(target) {
                 target.classList.add("active");
+                track(["send", "event", "modal", "open", element.getAttribute("data-target-modal").replace(/^#/, '')]);
             }
         })
     });
@@ -958,12 +969,29 @@ window.Omnibug = (() => {
         element.addEventListener("click", (event) => {
             event.preventDefault();
 
-            let target = element.closest(".modal");
+            let target = element.closest(".modal"),
+                modal = target.getAttribute("id");
             if(target) {
                 target.classList.remove("active");
+                if(modal === "filter-modal") {
+                    let hiddenProviders = Object.entries(filters.providers).filter((provider) => {
+                        return !provider[1] && (settings.enabledProviders.indexOf(provider[0]) > -1);
+                    });
+                    track(["send", "event", "filter requests", "account", (filters.account === "") ? "no filter" : filters.accountType]);
+                    track(["send", "event", "filter requests", "hidden providers", hiddenProviders.length]);
+                }
+                track(["send", "event", "modal", "close", modal]);
             }
         })
     });
+
+    // Add tracking to top nav
+    d.querySelectorAll("header > nav a").forEach((element) => {
+        element.addEventListener("click", (event) => {
+            track(["send", "event", "top nav", element.getAttribute("href").replace("#", "")]);
+        });
+    });
+
 
     // Add our listener for the account filter
     let filterAccount = d.getElementById("filter-account"),
@@ -994,7 +1022,12 @@ window.Omnibug = (() => {
             providers = d.querySelectorAll(`#filter-providers > li:not(.d-none) input[type="checkbox"]`);
         providers.forEach((provider) => {
             provider.checked = checked;
+            if(filters.providers.hasOwnProperty(provider.value)) {
+                filters.providers[provider.value] = checked;
+            }
         });
+        track(["send", "event", "filter requests", ((checked) ? "show" : "hide") + " all"]);
+        updateFiltersStyles();
     });
 
     // Add our filter
@@ -1034,6 +1067,7 @@ window.Omnibug = (() => {
         event.preventDefault();
         let formData = new FormData(event.target),
             filename = (formData.get("filename") || "").replace(/[^0-9a-zA-Z_ .,-]/g, ""),
+            defaultFilename = false,
             useFilters = Boolean(formData.get("useFilters")),
             showNavigation = Boolean(formData.get("showNavigation")),
             fileType = formData.get("fileType") || "",
@@ -1065,6 +1099,7 @@ window.Omnibug = (() => {
                 date = [now.getFullYear(), now.getMonth() + 1, now.getDate()].map((e) => e.toString().length === 1 ? "0" + e : e),
                 time = [now.getHours(), now.getMinutes() + 1, now.getSeconds()].map((e) => e.toString().length === 1 ? "0" + e : e);
             filename = `Omnibug_Export_${date.join("-")}_ ${time.join("-")}`;
+            defaultFilename = true;
         }
 
         // Append our file extension
@@ -1102,7 +1137,7 @@ window.Omnibug = (() => {
                 return `"` + row.join(colDelim) + `"`;
             }).join("\n");
         // Add any headers
-        exportText = `"` + ["Omnibug (Beta) v0.9.5", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
+        exportText = `"` + ["Omnibug (Beta) v0.9.6", "Exported " + (new Date()).toString()].join(colDelim) + `"\n`
                    + `"` + ["Event Type", "Provider", "Account", "Request ID", "Request URL", "POST Data", "Timestamp", "Notes"].join(colDelim) + `"\n` + exportText;
 
 
@@ -1120,6 +1155,16 @@ window.Omnibug = (() => {
 
         // Clean up
         link.remove();
+
+        track(["send", {
+            "hitType": "event",
+            "eventCategory": "export data",
+            "eventAction": fileType,
+            "eventLabel": (defaultFilename) ? "default filename" : "custom filename",
+            "metric1": exportData.length,
+            "dimension5": String(showNavigation),
+            "dimension6": String(useFilters)
+        }]);
 
         // Close the modal overlay now that they've exported the file
         let modal = event.target.closest(".modal");
@@ -1432,11 +1477,25 @@ window.Omnibug = (() => {
      * Load in new settings/styles
      *
      * @param newSettings
+     * @param fromStorage
      */
-    function loadSettings(newSettings) {
+    function loadSettings(newSettings, fromStorage = false) {
         let styleSheet = d.getElementById("settingsStyles");
 
         settings = newSettings;
+
+        if(!storageLoadedSettings && fromStorage && settings.allowTracking) {
+            // Load GA script
+            (function(o,m,n,i,b,u,g){o['GoogleAnalyticsObject']=b;o[b]=o[b]||function(){
+                (o[b].q=o[b].q||[]).push(arguments)},o[b].l=1*new Date();u=m.createElement(n),
+                g=m.getElementsByTagName(n)[0];u.async=1;u.src=i;g.parentNode.insertBefore(u,g)
+            })(window,document,'script','https://www.google-analytics.com/analytics.js','tracker');
+            tracker("set", "dimension2", String(settings.showRedirects));
+            tracker("set", "dimension3", String(settings.showNavigation));
+            tracker("set", "dimension4", String(settings.showNotes));
+            tracker("send", "pageview", "/panel");
+            storageLoadedSettings = true;
+        }
 
         // Build the filter list
         buildProviderFilterPanel();
@@ -1537,10 +1596,11 @@ window.Omnibug = (() => {
             providerList.appendChild(wrapper);
 
             // Add our event listener
-            input.addEventListener("change", (event) => {
+            input.addEventListener("input", (event) => {
                 let checkbox = event.target,
                     providerKey = checkbox.value;
                 filters.providers[providerKey] = checkbox.checked;
+                track(["send", "event", "filter requests", ((checkbox.checked) ? "show" : "hide") + "provider", providerKey]);
                 updateFiltersStyles();
             });
 
@@ -1548,17 +1608,20 @@ window.Omnibug = (() => {
         }
 
         // Finally, update our stylesheet with the new filters
-        updateFiltersStyles();
+        updateFiltersStyles(true);
     }
 
     /**
      * Update the filters stylesheet
+     * @param   fromBuilder
      */
-    function updateFiltersStyles() {
+    function updateFiltersStyles(fromBuilder = false) {
         let styleSheet = d.getElementById("filterStyles");
 
         // Clear out any existing styles
         clearStyles(styleSheet);
+
+        console.log("providers", filters.providers);
 
         // Figure out what providers are hidden
         let hiddenProviders = Object.entries(filters.providers).filter((provider) => {
@@ -1608,6 +1671,18 @@ window.Omnibug = (() => {
         }
     }
 
+    /**
+     * GA Tracking
+     *
+     * @param data
+     * @param force
+     */
+    function track(data, force = false) {
+        if(settings.allowTracking || force) {
+            tracker.apply(window, data);
+        }
+    }
+
     return {
         /**
          * Receive a message from our eventPage file
@@ -1623,7 +1698,7 @@ window.Omnibug = (() => {
                     addNavigation(message);
                 break;
                 case "settings":
-                    loadSettings(message.data);
+                    loadSettings(message.data, true);
                 break;
                 default:
                     this.send_message("Unknown message type", message);
