@@ -4,9 +4,10 @@ module.exports = function(grunt) {
     grunt.config.init({
         "extension": {
             "name": "Omnibug (Beta)",
-            "version": "0.9.5",
+            "version": "0.9.6",
             "storageKey": "omnibug-beta",
-            "feedbackUrl": "https://omnibug.io/beta-feedback"
+            "feedbackUrl": "https://omnibug.io/beta-feedback",
+            "analyticsID": "UA-114343677-3"
         },
         "chrome": {
             "usePolyfill": true,
@@ -280,6 +281,10 @@ module.exports = function(grunt) {
                     {
                         "from": "##OMNIBUG_FEEDBACK_URL##",
                         "to": extensionOptions.feedbackUrl
+                    },
+                    {
+                        "from": "##OMNIBUG_UA_ACCOUNT##",
+                        "to": extensionOptions.analyticsID
                     }
                 ]
             };
