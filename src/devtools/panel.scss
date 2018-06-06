@@ -56,7 +56,6 @@ nav.navbar {
     padding: 5px 0;
     position: sticky;
     top: 0;
-    background-color: inherit;
     z-index: 100;
 
     .container {
@@ -85,11 +84,35 @@ nav.navbar {
     color: $error-color;
   }
 }
-.request:nth-of-type(odd) {
-  background-color: #fafafa;
+.request:nth-of-type(odd),
+.request:nth-of-type(odd) > summary {
+  background-color: $body-background-color;
 }
-.request:nth-of-type(even) {
-  background-color: #f0f0f0;
+.request:nth-of-type(even),
+.request:nth-of-type(even) > summary {
+  background-color: darken($body-background-color, 5%);
+}
+@keyframes request-highlight-odd {
+  40% {
+    background: lighten($primary-color-light, 7%);
+  }
+  100% {
+    background: $body-background-color;
+  }
+}
+@keyframes request-highlight-even {
+  40% {
+    background: lighten($primary-color-light, 3%);
+  }
+  100% {
+    background: darken($body-background-color, 5%);
+  }
+}
+.request:nth-of-type(odd):not([open]) {
+  animation: request-highlight-odd 1.2s;
+}
+.request:nth-of-type(even):not([open]) {
+  animation: request-highlight-even 1.2s;
 }
 .request[open],
 .request[open] > summary {
@@ -160,7 +183,7 @@ nav.navbar {
     border: 0;
   }
   input:hover, .request-note input:focus {
-    background: #fff;
+    background: $white;
     transition: background 0.5s linear;
   }
 }
@@ -174,7 +197,7 @@ nav.navbar {
   @include hide-overflow;
   width: 100%;
   padding: .3em 2em;
-  background-color: #FFF;
+  background-color: $white;
   font-size: .9em;
   color: #AAA;
   border-top: 1px solid $border-color;
@@ -190,10 +213,16 @@ nav.navbar {
 }
 #filter-providers {
   list-style-type: none;
-
+  margin-top: 0;
   input {
     margin-right: .5em;
   }
+}
+#provider-select-all-wrapper {
+  margin: 0.8rem 0 0 0.8rem;
+  border-bottom: 1px solid $border-color;
+  padding-bottom: .2rem;
+  font-weight: bold;
 }
 .filters-active [data-target-modal="filter-modal"] {
   color: #FF9800 !important;

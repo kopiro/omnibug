@@ -2782,7 +2782,6 @@ nav.navbar {
     padding: 5px 0;
     position: sticky;
     top: 0;
-    background-color: inherit;
     z-index: 100; }
     .request > summary .container {
       margin-top: -1.5em;
@@ -2802,11 +2801,31 @@ nav.navbar {
   .request .redirected:focus .redirect-icon {
     color: #e85600; }
 
-.request:nth-of-type(odd) {
-  background-color: #fafafa; }
+.request:nth-of-type(odd),
+.request:nth-of-type(odd) > summary {
+  background-color: #FAFAFA; }
 
-.request:nth-of-type(even) {
-  background-color: #f0f0f0; }
+.request:nth-of-type(even),
+.request:nth-of-type(even) > summary {
+  background-color: #ededed; }
+
+@keyframes request-highlight-odd {
+  40% {
+    background: #ddeefd; }
+  100% {
+    background: #FAFAFA; } }
+
+@keyframes request-highlight-even {
+  40% {
+    background: #c9e5fc; }
+  100% {
+    background: #ededed; } }
+
+.request:nth-of-type(odd):not([open]) {
+  animation: request-highlight-odd 1.2s; }
+
+.request:nth-of-type(even):not([open]) {
+  animation: request-highlight-even 1.2s; }
 
 .request[open],
 .request[open] > summary {
@@ -2866,7 +2885,7 @@ nav.navbar {
   border: 0; }
 
 .request-note input:hover, .request-note .request-note input:focus {
-  background: #fff;
+  background: #FFF;
   transition: background 0.5s linear; }
 
 .parameter-key, .parameter-field {
@@ -2896,9 +2915,16 @@ nav.navbar {
   padding-top: 0; }
 
 #filter-providers {
-  list-style-type: none; }
+  list-style-type: none;
+  margin-top: 0; }
   #filter-providers input {
     margin-right: .5em; }
+
+#provider-select-all-wrapper {
+  margin: 0.8rem 0 0 0.8rem;
+  border-bottom: 1px solid #e7e9ed;
+  padding-bottom: .2rem;
+  font-weight: bold; }
 
 .filters-active [data-target-modal="filter-modal"] {
   color: #FF9800 !important; }

@@ -4,7 +4,7 @@ module.exports = function(grunt) {
     grunt.config.init({
         "extension": {
             "name": "Omnibug (Beta)",
-            "version": "0.9.3",
+            "version": "0.9.5",
             "storageKey": "omnibug-beta",
             "feedbackUrl": "https://omnibug.io/beta-feedback"
         },
