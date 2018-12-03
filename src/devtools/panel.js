@@ -253,7 +253,11 @@ window.Omnibug = (() => {
                     ];
                 }
                 row.push(request.request.url.replace(/"/g, `\\"`));
-                row.push(request.request.postData);
+                if(typeof request.request.postData !== "string") {
+                    row.push(JSON.stringify(request.request.postData));
+                } else {
+                    row.push(request.request.postData);
+                }
                 row.push((new Date(request.request.timestamp)).toString());
                 if(settings.showNotes) {
                     row.push(request.request.note);
@@ -813,7 +817,7 @@ window.Omnibug = (() => {
                 });
 
             // Check if the user has the provider enabled or not
-            if(!settings.providers[providerKey].enabled) {
+            if(settings.providers[providerKey] && !settings.providers[providerKey].enabled) {
                 input.setAttribute("disabled", "disabled");
                 label.classList.add("disabled");
                 label.setAttribute("title", "This provider is currently disabled and requests for this provider will never be shown. You can re-enable it within the settings");

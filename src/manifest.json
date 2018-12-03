@@ -2,7 +2,7 @@
     "manifest_version": 2,
     "name": "##OMNIBUG_NAME##",
     "version": "##OMNIBUG_VERSION##",
-    "description": "Omnibug is a browser extension to decode and display outgoing web metrics requests.",
+    "description": "Omnibug is a browser extension to decode and display outgoing digital marketing tool requests.",
     "author": "Philip Lawrence",
     "icons": {
         "16": "assets/images/blue-16.png",
@@ -39,7 +39,6 @@
         "webNavigation",
         "*://*/*"
     ],
-    "content_security_policy": "script-src 'self' https://www.google-analytics.com; object-src 'self'",
     "short_name": "Omnibug",
     "applications": {
         "gecko": {

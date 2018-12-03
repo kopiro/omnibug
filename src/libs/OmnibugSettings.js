@@ -101,7 +101,21 @@ class OmnibugSettings
     {
         return new Promise((resolve, reject) => {
             this.browser.storage[this.storage_type].get(this.storage_key, (settings) => {
-                return resolve(Object.assign(this.defaults, settings[this.storage_key]));
+                try {
+                    if(typeof settings[this.storage_key] === "object") {
+                        if (typeof settings[this.storage_key].providers !== "object") {
+                            settings[this.storage_key].providers = this.defaults.providers;
+                        } else {
+                            Object.keys(this.defaults.providers).forEach((key) => {
+                                settings[this.storage_key].providers[key] = Object.assign(this.defaults.providers[key], settings[this.storage_key].providers[key]);
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    return resolve(Object.assign(this.defaults, settings[this.storage_key]));
+                }
             });
         });
     }
@@ -120,6 +134,22 @@ class OmnibugSettings
 
         // Return the merged settings object
         return settings[this.storage_key];
+    }
+
+    /**
+     * Save a single setting to the browser's storage
+     *
+     * @param key
+     * @param value
+     *
+     * @return {Promise<*>}
+     */
+    updateItem(key, value)
+    {
+        return this.load().then((settings) => {
+            settings[key] = value;
+            return this.save(settings);
+        });
     }
 
     /**
